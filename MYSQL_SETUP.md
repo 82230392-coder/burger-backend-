@@ -8,7 +8,7 @@ Open your `.env` file and update it with these Railway MySQL credentials:
 # Railway MySQL Database Configuration
 DB_HOST=tramway.proxy.rlwy.net
 DB_USER=root
-DB_PASSWORD=FHPKFiFywdTGBBVKCeSZsxmuIBRaiIJv
+DB_PASSWORD=FHPKFiFywdTGBBVKCeSZsxmuIBRaIiJv
 DB_NAME=railway
 DB_PORT=19641
 
