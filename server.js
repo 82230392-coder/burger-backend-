@@ -130,22 +130,34 @@ app.post("/verify", async (req, res) => {
 });
 
 /* ================= LOGIN ================= */
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
   const { email, password } = req.body;
+  console.log(`🔑 Login attempt for: ${email}`);
 
-  db.query("SELECT * FROM users WHERE email=?", [email], async (err, r) => {
-    if (!r.length)
+  try {
+    const [rows] = await db.promise().query("SELECT * FROM users WHERE email=?", [email]);
+
+    if (!rows.length) {
+      console.log(`❌ Login failed: User ${email} not found`);
       return res.status(401).json({ message: "Invalid credentials" });
+    }
 
-    const user = r[0];
+    const user = rows[0];
     const match = await bcrypt.compare(password, user.password);
 
-    if (!match) return res.status(401).json({ message: "Invalid credentials" });
-    if (!user.is_verified)
+    if (!match) {
+      console.log(`❌ Login failed: Incorrect password for ${email}`);
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.is_verified) {
+      console.log(`❌ Login failed: ${email} is not verified`);
       return res.status(403).json({ message: "Verify email first" });
+    }
 
     req.session.userId = user.id;
     req.session.role = user.role;
+    console.log(`✅ Login successful: ${email} (${user.role})`);
 
     res.json({
       message: "Login successful",
@@ -155,7 +167,10 @@ app.post("/login", (req, res) => {
         role: user.role,
       },
     });
-  });
+  } catch (err) {
+    console.error("❌ Login Route Error:", err.message);
+    res.status(500).json({ message: "Internal server error during login" });
+  }
 });
 
 /* ================= LOGOUT ================= */
