@@ -461,6 +461,17 @@ app.get("/admin/chart", (req, res) => {
   });
 });
 
+/* ================= HEALTH CHECK ================= */
+app.get("/health", async (req, res) => {
+  try {
+    await db.promise().query("SELECT 1");
+    res.json({ status: "ok", database: "connected" });
+  } catch (err) {
+    console.error("❌ Health Check Failed:", err.message);
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
+
 /* ================= SERVER ================= */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
