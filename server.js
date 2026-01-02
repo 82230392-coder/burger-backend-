@@ -51,9 +51,10 @@ app.use(
     secret: process.env.SESSION_SECRET || "burger_secret_key_123",
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Required for secure cookies on Render/Heroku
     cookie: {
-      secure: process.env.NODE_ENV === "production", // true on Render
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: true, // Force secure since we are on HTTPS (Render) and Vercel
+      sameSite: "none", // Required for cross-site cookies
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24,
     },
@@ -377,8 +378,12 @@ app.delete("/menu/:id", (req, res) => {
 
 /* ================= ADMIN DASHBOARD ================= */
 app.get("/admin/stats", (req, res) => {
-  if (req.session.role !== "admin")
+  console.log("📊 Stats request session:", req.session);
+
+  if (!req.session || req.session.role !== "admin") {
+    console.log("🚫 Stats request denied: Not an admin");
     return res.status(403).json({ message: "Admin only" });
+  }
 
   db.query(
     `
