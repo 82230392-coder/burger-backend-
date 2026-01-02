@@ -421,6 +421,9 @@ app.get("/orders", (req, res) => {
 
 // Orders count + income grouped by date (last 7 days)
 app.get("/admin/chart", (req, res) => {
+  if (req.session.role !== "admin")
+    return res.status(403).json({ message: "Admin only" });
+
   const sql = `
     SELECT 
       DATE(created_at) AS day,
