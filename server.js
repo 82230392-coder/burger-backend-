@@ -1,5 +1,4 @@
 import express from "express";
-import mysql from "mysql2";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
@@ -7,6 +6,7 @@ import session from "express-session";
 import multer from "multer";
 import path from "path";
 import dotenv from "dotenv";
+import db, { initDatabase } from "./config/database.js";
 
 // Load environment variables
 dotenv.config();
@@ -40,19 +40,9 @@ app.use(
 /* ================= STATIC ================= */
 app.use("/uploads", express.static("uploads"));
 
-/* ================= DB ================= */
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "new-burger",
-  port: process.env.DB_PORT || 3306,
-});
-
-db.connect((err) => {
-  if (err) console.log("❌ DB Error:", err);
-  else console.log("✅ MySQL Connected");
-});
+/* ================= DB INITIALIZATION ================= */
+// Initialize database (creates tables if they don't exist)
+await initDatabase();
 
 /* ================= MULTER ================= */
 const storage = multer.diskStorage({
