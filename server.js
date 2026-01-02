@@ -53,7 +53,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-/* ================= EMAIL ================= */
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -62,39 +61,72 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Verify transporter on startup without crashing
+transporter.verify((error) => {
+  if (error) {
+    console.error("📧 Email Error:", error.message);
+  } else {
+    console.log("📧 Email Transporter Ready");
+  }
+});
+
 /* ================= REGISTER ================= */
 app.post("/register", async (req, res) => {
   const { fullName, email, password } = req.body;
 
-  db.query("SELECT id FROM users WHERE email=?", [email], async (err, r) => {
-    if (r.length) return res.status(409).json({ message: "Email exists" });
+  try {
+    // Check if user exists
+    const [existing] = await db.promise().query("SELECT id FROM users WHERE email=?", [email]);
+    if (existing.length) return res.status(409).json({ message: "Email already registered" });
 
     const verifyCode = Math.floor(100000 + Math.random() * 900000);
     const hash = await bcrypt.hash(password, 10);
 
-    db.query(
-      "INSERT INTO users (name,email,role,verify_code,password) VALUES (?,?,'user',?,?)",
-      [fullName, email, verifyCode, hash],
-      async () => {
-        await transporter.sendMail({
-          to: email,
-          subject: "Verify Account",
-          html: `<h2>Your verification code</h2><h1>${verifyCode}</h1>`,
-        });
-        res.json({ message: "Registered" });
-      }
+    // Insert user
+    await db.promise().query(
+      "INSERT INTO users (name, email, role, verify_code, password) VALUES (?, ?, 'user', ?, ?)",
+      [fullName, email, verifyCode, hash]
     );
-  });
+
+    console.log(`🔑 Verification code for ${email}: ${verifyCode}`);
+
+    // Attempt to send email but don't crash if it fails
+    try {
+      await transporter.sendMail({
+        to: email,
+        subject: "Verify Account - Burger App",
+        html: `<h2>Welcome to Burger App!</h2><p>Your verification code is:</p><h1 style="color: #ff4757;">${verifyCode}</h1>`,
+      });
+    } catch (emailErr) {
+      console.error("📧 Email delivery failed:", emailErr.message);
+    }
+
+    res.json({ message: "Registration successful. Please verify your email." });
+  } catch (err) {
+    console.error("❌ Registration Error:", err.message);
+    res.status(500).json({ message: "Internal server error during registration" });
+  }
 });
 
 /* ================= VERIFY ================= */
-app.post("/verify", (req, res) => {
+app.post("/verify", async (req, res) => {
   const { email, code } = req.body;
-  db.query(
-    "UPDATE users SET is_verified=1 WHERE email=? AND verify_code=?",
-    [email, code],
-    () => res.json({ message: "Verified" })
-  );
+
+  try {
+    const [result] = await db.promise().query(
+      "UPDATE users SET is_verified=1 WHERE email=? AND verify_code=?",
+      [email, code]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ message: "Invalid verification code or email" });
+    }
+
+    res.json({ message: "Account verified successfully!" });
+  } catch (err) {
+    console.error("❌ Verification Error:", err.message);
+    res.status(500).json({ message: "Verification failed" });
+  }
 });
 
 /* ================= LOGIN ================= */
@@ -155,7 +187,7 @@ app.get("/menu", (req, res) => {
       price: Number(m.price),
       category: m.category,
       rating: 4.5,
-      image: `http://localhost:5000/uploads/${m.image}`,
+      image: `${process.env.BACKEND_URL || "http://localhost:5000"}/uploads/${m.image}`,
     }));
     res.json(formatted);
   });
@@ -379,7 +411,7 @@ app.get("/orders", (req, res) => {
         name: r.name,
         price: r.price,
         quantity: r.quantity,
-        image: `http://localhost:5000/uploads/${r.image}`,
+        image: `${process.env.BACKEND_URL || "http://localhost:5000"}/uploads/${r.image}`,
       });
     });
 

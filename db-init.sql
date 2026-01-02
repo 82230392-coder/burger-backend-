@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS order_items (
 
 -- Insert default admin user (password: admin123)
 INSERT IGNORE INTO users (name, email, password, role, is_verified) 
-VALUES ('Admin', 'admin@burger.com', '$2b$10$K/k/MOHV3yWyb2GY2wbAM9K', 'admin', 1);
+VALUES ('Admin', 'admin@burger.com', '$2b$10$4/3A0ZKw7tqgI2LsiY8NB6NxiYXI8l1m', 'admin', 1);
 
 -- Insert sample menu items (optional)
 INSERT IGNORE INTO menu (id, name, price, category, image) VALUES
